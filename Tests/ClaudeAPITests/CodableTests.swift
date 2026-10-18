@@ -32,6 +32,21 @@ import Testing
     #expect((json["thinking"] as? [String: Any])?["display"] as? String == "summarized")
     #expect((json["cache_control"] as? [String: Any])?["ttl"] as? String == "1h")
     #expect((json["tools"] as? [[String: Any]])?.first?["input_schema"] != nil)
+    // The system prompt carries its own breakpoint, so a single-turn session
+    // reuses it instead of writing it again behind each new message.
+    let system = try #require(json["system"] as? [[String: Any]])
+    #expect(system.count == 1)
+    #expect(system[0]["type"] as? String == "text")
+    #expect(system[0]["text"] as? String == "Be terse.")
+    #expect((system[0]["cache_control"] as? [String: Any])?["ttl"] as? String == "1h")
+  }
+
+  @Test func `system stays a plain string without cache control`() throws {
+    let req = MessagesRequest(model: "claude-a", system: "Be terse.", messages: [.user("hi")])
+    let data = try JSONEncoder().encode(req)
+    let json = try #require(try JSONSerialization.jsonObject(with: data) as? [String: Any])
+    #expect(json["system"] as? String == "Be terse.")
+    #expect(json["cache_control"] == nil)
   }
 
   // A fallback entry's field replaces the request's whole field for that
